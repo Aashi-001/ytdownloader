@@ -12,13 +12,22 @@ def check_dependencies():
         print("Error: ffmpeg not installed. Install it via package manager.")
         sys.exit(1)
 
+# def download_video(url, output_path):
+#     subprocess.run([
+#         "yt-dlp",
+#         "-f", "bestvideo+bestaudio/best",
+#         "-o", output_path,
+#         url
+#     ], check=True)
 def download_video(url, output_path):
     subprocess.run([
         "yt-dlp",
         "-f", "bestvideo+bestaudio/best",
+        "--merge-output-format", "mkv",    # <------ FORCE MKV
         "-o", output_path,
         url
     ], check=True)
+
 
 def trim_video(input_path, start_time, end_time, output_path):
     subprocess.run([
@@ -28,6 +37,17 @@ def trim_video(input_path, start_time, end_time, output_path):
         "-to", end_time,
         "-c", "copy",
         output_path
+    ], check=True)
+
+def convert_to_mp4(input_mkv_path, final_mp4_path):
+    # Step 3: Re-encode or remux to MP4
+    subprocess.run([
+        "ffmpeg",
+        "-i", input_mkv_path,
+        "-c:v", "copy",
+        "-c:a", "aac",   # Convert audio if needed
+        "-strict", "experimental",
+        final_mp4_path
     ], check=True)
 
 def main():
@@ -41,16 +61,23 @@ def main():
 
     check_dependencies()
 
+    os.makedirs(args.dest, exist_ok=True)
+
     full_video_path = os.path.join(args.dest, "full_video.mkv")
-    trimmed_video_path = os.path.join(args.dest, "trimmed_video.mkv")
+    trimmed_mkv_path = os.path.join(args.dest, "trimmed_video.mkv")
+    final_mp4_path = os.path.join(args.dest, "final_output.mp4")
 
     print("\n▶️ Downloading full video...")
     download_video(args.url, full_video_path)
 
     print("\n✂️ Trimming the video...")
-    trim_video(full_video_path, args.start_time, args.end_time, trimmed_video_path)
+    trim_video(full_video_path, args.start_time, args.end_time, trimmed_mkv_path)
 
-    print(f"\n✅ Saved trimmed video at: {trimmed_video_path}")
+    print("\n🎥 Converting trimmed video to MP4...")
+    convert_to_mp4(trimmed_mkv_path, final_mp4_path)
+
+    print(f"\n✅ Saved final trimmed video at: {final_mp4_path}")
+
 
 if __name__ == "__main__":
     main()
